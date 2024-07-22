@@ -4,22 +4,25 @@ import Auth from './components/Auth';
 import CreateQuiz from './components/CreateQuiz';
 import QuizList from './components/QuizList';
 import Navbar from './components/Navbar';
-import QuizDetail from './components/QuizDetail';
+import UserQuizzes from './components/UserQuizzes';
+import Layout from './components/layout/layout';
+
 import TakeQuiz from './components/TakeQuiz';
 
 const App = () => (
   <Router>
-    <Navbar />
+    <Layout>
     <div className="pt-20"> {/* Adjusted padding to match the navbar height */}
       <Routes>
         <Route path="/" element={<QuizList />} />
         <Route path="/create-quiz" element={<CreateQuiz />} />
         <Route path="/quizzes" element={<QuizList />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/quizzes/:id" element={<QuizDetail />} />
-        <Route path="/quizzes/take-quiz/:id" element={<TakeQuiz />} />
+        <Route path="/take-quiz/:id" element={<TakeQuiz />} />
+        <Route path="/user-quizzes" element={<UserQuizzes />} />
       </Routes>
     </div>
+    </Layout>
   </Router>
 );
 

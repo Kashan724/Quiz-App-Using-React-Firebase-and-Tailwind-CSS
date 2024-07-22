@@ -1,82 +1,82 @@
-import { auth, googleProvider } from "../config/firebase";
-import {
-  createUserWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-} from "firebase/auth";
-import { useState } from "react";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../config/firebase';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Auth = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
   const signIn = async () => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      alert("Signed in");
+      navigate('/');
     } catch (err) {
       console.error(err);
+      toast.error('Failed to sign in');
     }
   };
 
   const signInWithGoogle = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      alert("Signed in with Google");
+      navigate('/');
     } catch (err) {
       console.error(err);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      alert("Signed out");
-    } catch (err) {
-      console.error(err);
+      toast.error('Failed to sign in with Google');
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
-        <input
-          type="email"
-          placeholder="Email"
-          className="mb-4 p-2 w-full border rounded"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          className="mb-4 p-2 w-full border rounded"
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button
-          onClick={signIn}
-          className="mb-4 w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Sign In
-        </button>
-        <button
-          onClick={signInWithGoogle}
-          className="mb-4 w-full p-2 flex items-center justify-center bg-red-500 text-white rounded hover:bg-red-600"
-        >
+      <div className="bg-white p-10 rounded-lg shadow-lg w-full max-w-4xl flex">
+        {/* Left Column - Image */}
+        <div className="hidden md:flex md:w-1/2 items-center justify-center">
           <img
-            src="https://www.google.com/favicon.ico"
-            alt="Google logo"
-            className="w-5 h-5 mr-2"
+            src="https://img.freepik.com/free-photo/still-life-device-table_23-2150994337.jpg"
+            alt="Authentication Image"
+            className="w-full max-h-full object-cover"
           />
-          Sign In with Google
-        </button>
-        <button
-          onClick={logout}
-          className="w-full p-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-        >
-          Logout
-        </button>
+        </div>
+
+        {/* Right Column - Form */}
+        <div className="w-full md:w-1/2 p-8">
+          <h1 className="text-4xl font-bold mb-8 text-center text-blue-500">Welcome Back!</h1>
+          <input
+            type="email"
+            placeholder="Email"
+            className="mb-6 p-4 w-full border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            className="mb-6 p-4 w-full border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg"
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            onClick={signIn}
+            className="mb-6 w-full p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none text-lg"
+          >
+            Sign In
+          </button>
+          <button
+            onClick={signInWithGoogle}
+            className="mb-4 w-full p-4 flex items-center justify-center bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none text-lg"
+          >
+            <img
+              src="https://www.google.com/favicon.ico"
+              alt="Google logo"
+              className="w-6 h-6 mr-2"
+            />
+            Sign In with Google
+          </button>
+        </div>
       </div>
+      <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={true} />
     </div>
   );
 };
