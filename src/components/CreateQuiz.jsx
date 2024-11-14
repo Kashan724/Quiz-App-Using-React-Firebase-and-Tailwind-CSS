@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { db, auth } from '../config/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import axios from 'axios';
+import Joyride from 'react-joyride';
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 
 const MODEL_NAME = 'gemini-1.0-pro';
@@ -9,14 +10,34 @@ const API_KEY = 'AIzaSyDZGWUpNM0b30xtiAn7XrAIvfoV92OL1i4'; // Replace with your 
 
 const CreateQuiz = () => {
   const [title, setTitle] = useState('');
-  const [questions, setQuestions] = useState([{
-    question: '',
-    options: ['', '', '', ''],
-    correctAnswerIndex: 0
-  }]);
-
+  const [questions, setQuestions] = useState([{ question: '', options: ['', '', '', ''], correctAnswerIndex: 0 }]);
   const [generateTitle, setGenerateTitle] = useState('');
   const [numQuestions, setNumQuestions] = useState(1);
+  const [joyrideState, setJoyrideState] = useState({ run: true }); // Start tour by default
+
+  // Define steps for the tour
+  const steps = [
+    {
+      target: '#quiz-title',
+      content: 'Enter a title for your quiz here.',
+    },
+    {
+      target: '#question-input',
+      content: 'This is where you add your questions and answer options.',
+    },
+    {
+      target: '#generate-questions-section',
+      content: 'You can generate AI-based questions here.',
+    },
+    {
+      target: '#add-question-button',
+      content: 'Click here to add more questions.',
+    },
+    {
+      target: '#create-quiz-button',
+      content: 'Once ready, click here to create your quiz!',
+    },
+  ];
 
   const handleAddQuestion = () => {
     setQuestions([...questions, { question: '', options: ['', '', '', ''], correctAnswerIndex: 0 }]);
@@ -29,7 +50,7 @@ const CreateQuiz = () => {
         const docRef = await addDoc(collection(db, 'quizzes'), {
           title,
           questions,
-          creatorEmail: user.email
+          creatorEmail: user.email,
         });
         console.log('Quiz created with ID:', docRef.id);
         setTitle('');
@@ -45,49 +66,20 @@ const CreateQuiz = () => {
   const handleGenerateQuestions = async () => {
     const genAI = new GoogleGenerativeAI(API_KEY);
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-    const generationConfig = {
-      temperature: 0.9,
-      topK: 1,
-      topP: 1,
-      maxOutputTokens: 2048,
-    };
-
+    const generationConfig = { temperature: 0.9, topK: 1, topP: 1, maxOutputTokens: 2048 };
     const safetySettings = [
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
     ];
-
-    const chat = model.startChat({
-      generationConfig,
-      safetySettings,
-      history: [],
-    });
-
+    const chat = model.startChat({ generationConfig, safetySettings, history: [] });
     try {
       const result = await chat.sendMessage(`Generate ${numQuestions} multiple-choice quiz questions about ${generateTitle}. Each question should have 4 options, and the correct answer should be indicated with an asterisk (*).`);
       const responseText = await result.response.text();
-
-      console.log('Response text:', responseText);  // Debug log to see the response
-
       const parsedQuestions = parseResponseText(responseText);
-
       setQuestions(parsedQuestions);
-      setTitle(generateTitle); // Set the title automatically when generating questions
+      setTitle(generateTitle);
     } catch (error) {
       console.error('Error generating questions:', error);
     }
@@ -99,15 +91,10 @@ const CreateQuiz = () => {
     let currentQuestion = '';
     let currentOptions = [];
     let correctAnswerIndex = -1;
-
     lines.forEach(line => {
       if (line.startsWith('**Question')) {
         if (currentQuestion) {
-          questions.push({
-            question: currentQuestion.trim(),
-            options: currentOptions,
-            correctAnswerIndex
-          });
+          questions.push({ question: currentQuestion.trim(), options: currentOptions, correctAnswerIndex });
         }
         currentQuestion = '';
         currentOptions = [];
@@ -125,15 +112,9 @@ const CreateQuiz = () => {
         currentQuestion += line + ' ';
       }
     });
-
     if (currentQuestion) {
-      questions.push({
-        question: currentQuestion.trim(),
-        options: currentOptions,
-        correctAnswerIndex
-      });
+      questions.push({ question: currentQuestion.trim(), options: currentOptions, correctAnswerIndex });
     }
-
     return questions;
   };
 
@@ -157,17 +138,19 @@ const CreateQuiz = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <Joyride steps={steps} run={joyrideState.run} continuous showSkipButton />
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
         <h1 className="text-2xl mb-4 font-bold text-center">Create a New Quiz</h1>
         <input
           type="text"
+          id="quiz-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Quiz Title"
           className="mb-4 p-2 border rounded w-full"
         />
         {questions.map((q, qIndex) => (
-          <div key={qIndex} className="mb-4">
+          <div key={qIndex} id="question-input" className="mb-4">
             <input
               type="text"
               value={q.question}
@@ -198,13 +181,13 @@ const CreateQuiz = () => {
             </select>
           </div>
         ))}
-        <button onClick={handleAddQuestion} className="mb-4 p-2 bg-green-500 text-white rounded w-full">
+        <button id="add-question-button" onClick={handleAddQuestion} className="mb-4 p-2 bg-green-500 text-white rounded w-full">
           Add Question
         </button>
-        <button onClick={handleCreateQuiz} className="p-2 bg-blue-500 text-white rounded w-full">
+        <button id="create-quiz-button" onClick={handleCreateQuiz} className="p-2 bg-blue-500 text-white rounded w-full">
           Create Quiz
         </button>
-        <div className="mt-8">
+        <div id="generate-questions-section" className="mt-8">
           <h2 className="text-xl mb-4 font-bold text-center">Generate Questions</h2>
           <input
             type="text"

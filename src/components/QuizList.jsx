@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 import app, { auth } from '../config/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactJoyride from 'react-joyride';
 
 const QuizList = () => {
   const [quizzes, setQuizzes] = useState([]);
   const [submittedQuizzes, setSubmittedQuizzes] = useState([]);
+  const [run, setRun] = useState(true); // Initialize run to true to auto-start the tour
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,24 +35,61 @@ const QuizList = () => {
     navigate(`/take-quiz/${id}`);
   };
 
+  const steps = [
+    {
+      target: "h1", // This should be a valid selector for your heading element
+      content: "Welcome! Here you can view all available quizzes.",
+      disableBeacon: true, // Disable the beacon for auto-started tours
+    },
+    {
+      target: ".grid", // Selector for the quiz grid container
+      content: "Browse through the quizzes available for you to take.",
+    },
+    {
+      target: ".bg-green-500", // Selector for the Take Quiz button
+      content: "Click here to start a quiz.",
+    },
+  ];
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-12">
+      <ReactJoyride
+        steps={steps}
+        continuous
+        showSkipButton
+        run={run} // Set to true to start the tour automatically
+        styles={{
+          options: {
+            arrowColor: "#e3f2fd",
+            backgroundColor: "#e3f2fd",
+            primaryColor: "#1976d2",
+            textColor: "#0d47a1",
+            zIndex: 1000,
+          },
+        }}
+        callback={(data) => {
+          const { status } = data;
+          if (status === "finished" || status === "skipped") {
+            setRun(false); // Stop running the tour after it completes or is skipped
+          }
+        }}
+      />
+      
       <div className="bg-white p-10 rounded-lg shadow-lg w-full max-w-7xl">
         
         {/* Header with pulsing animation */}
         <motion.h1
-  className="text-4xl mb-10 font-bold text-center text-blue-600"
-  initial={{ opacity: 0, y: -20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 1 }}
-  whileHover={{
-    scale: 1.1,
-    color: "#1d4ed8",
-  }}
-  style={{ display: "block" }} // Ensures visibility
->
-  Available Quizzes
-</motion.h1>
+          className="text-4xl mb-10 font-bold text-center text-blue-600"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1 }}
+          whileHover={{
+            scale: 1.1,
+            color: "#1d4ed8",
+          }}
+        >
+          Available Quizzes
+        </motion.h1>
 
         {/* Loading Spinner */}
         {quizzes.length === 0 ? (
@@ -90,11 +129,6 @@ const QuizList = () => {
                     filter: submittedQuizzes.includes(quiz.id) ? 'brightness(0.9)' : 'brightness(1.1)',
                     boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)',
                   }}
-                  style={{
-                    borderWidth: '1px',
-                    borderColor: '#d1d5db',
-                    position: 'relative',
-                  }}
                 >
                   <motion.h2
                     className="text-xl font-semibold text-blue-600"
@@ -131,19 +165,6 @@ const QuizList = () => {
                       Take Quiz
                     </motion.button>
                   )}
-                  {/* Floating Animation */}
-                  <motion.div
-                    className="absolute inset-0 pointer-events-none"
-                    animate={{
-                      y: [0, -4, 0], // Moves slightly up and down
-                    }}
-                    transition={{
-                      duration: 3,
-                      ease: 'easeInOut',
-                      repeat: Infinity,
-                      repeatType: 'reverse',
-                    }}
-                  />
                 </motion.div>
               ))}
             </motion.div>
