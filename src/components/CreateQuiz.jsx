@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { db, auth } from '../config/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import axios from 'axios';
 import Joyride from 'react-joyride';
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 
@@ -13,9 +12,11 @@ const CreateQuiz = () => {
   const [questions, setQuestions] = useState([{ question: '', options: ['', '', '', ''], correctAnswerIndex: 0 }]);
   const [generateTitle, setGenerateTitle] = useState('');
   const [numQuestions, setNumQuestions] = useState(1);
-  const [joyrideState, setJoyrideState] = useState({ run: true }); // Start tour by default
+  const [isGenerating, setIsGenerating] = useState(false); // Loading indicator state
+  const [showPopup, setShowPopup] = useState(false); // Popup for quiz submission confirmation
+  const [joyrideState, setJoyrideState] = useState({ run: true }); // Automatically start the tour
 
-  // Define steps for the tour
+  // Tour steps
   const steps = [
     {
       target: '#quiz-title',
@@ -47,14 +48,15 @@ const CreateQuiz = () => {
     try {
       const user = auth.currentUser;
       if (user) {
-        const docRef = await addDoc(collection(db, 'quizzes'), {
+        await addDoc(collection(db, 'quizzes'), {
           title,
           questions,
           creatorEmail: user.email,
         });
-        console.log('Quiz created with ID:', docRef.id);
         setTitle('');
         setQuestions([{ question: '', options: ['', '', '', ''], correctAnswerIndex: 0 }]);
+        setShowPopup(true); // Show popup on successful quiz submission
+        setTimeout(() => setShowPopup(false), 3000); // Auto-hide popup after 3 seconds
       } else {
         console.error('No user is logged in');
       }
@@ -64,6 +66,7 @@ const CreateQuiz = () => {
   };
 
   const handleGenerateQuestions = async () => {
+    setIsGenerating(true); // Start loading
     const genAI = new GoogleGenerativeAI(API_KEY);
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
     const generationConfig = { temperature: 0.9, topK: 1, topP: 1, maxOutputTokens: 2048 };
@@ -82,6 +85,8 @@ const CreateQuiz = () => {
       setTitle(generateTitle);
     } catch (error) {
       console.error('Error generating questions:', error);
+    } finally {
+      setIsGenerating(false); // Stop loading
     }
   };
 
@@ -118,27 +123,22 @@ const CreateQuiz = () => {
     return questions;
   };
 
-  const handleQuestionChange = (index, field, value) => {
-    const newQuestions = [...questions];
-    newQuestions[index][field] = value;
-    setQuestions(newQuestions);
-  };
-
-  const handleOptionChange = (qIndex, oIndex, value) => {
-    const newQuestions = [...questions];
-    newQuestions[qIndex].options[oIndex] = value;
-    setQuestions(newQuestions);
-  };
-
-  const handleCorrectAnswerChange = (qIndex, value) => {
-    const newQuestions = [...questions];
-    newQuestions[qIndex].correctAnswerIndex = value;
-    setQuestions(newQuestions);
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Joyride steps={steps} run={joyrideState.run} continuous showSkipButton />
+      <Joyride
+        steps={steps}
+        run={joyrideState.run}
+        continuous
+        showSkipButton
+        showProgress
+        disableOverlayClose // Prevent clicking outside to close the tour
+        spotlightPadding={10} // Highlight padding for target elements
+        callback={(data) => {
+          if (data.status === 'finished' || data.status === 'skipped') {
+            setJoyrideState({ ...joyrideState, run: false });
+          }
+        }}
+      />
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
         <h1 className="text-2xl mb-4 font-bold text-center">Create a New Quiz</h1>
         <input
@@ -168,17 +168,6 @@ const CreateQuiz = () => {
                 className="mb-2 p-2 border rounded w-full"
               />
             ))}
-            <select
-              value={q.correctAnswerIndex}
-              onChange={(e) => handleCorrectAnswerChange(qIndex, parseInt(e.target.value))}
-              className="mb-2 p-2 border rounded w-full"
-            >
-              {q.options.map((option, oIndex) => (
-                <option key={oIndex} value={oIndex}>
-                  {`Correct Answer: Option ${oIndex + 1}`}
-                </option>
-              ))}
-            </select>
           </div>
         ))}
         <button id="add-question-button" onClick={handleAddQuestion} className="mb-4 p-2 bg-green-500 text-white rounded w-full">
@@ -187,6 +176,7 @@ const CreateQuiz = () => {
         <button id="create-quiz-button" onClick={handleCreateQuiz} className="p-2 bg-blue-500 text-white rounded w-full">
           Create Quiz
         </button>
+        
         <div id="generate-questions-section" className="mt-8">
           <h2 className="text-xl mb-4 font-bold text-center">Generate Questions</h2>
           <input
@@ -204,10 +194,20 @@ const CreateQuiz = () => {
             className="mb-4 p-2 border rounded w-full"
           />
           <button onClick={handleGenerateQuestions} className="p-2 bg-purple-500 text-white rounded w-full">
-            Generate Questions
+            {isGenerating ? 'Generating...' : 'Generate Questions'}
           </button>
         </div>
       </div>
+
+      {/* Popup modal for quiz submission confirmation */}
+      {showPopup && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+            <h2 className="text-lg font-bold text-green-500">Quiz Submitted!</h2>
+            <p>Your quiz has been successfully created.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
